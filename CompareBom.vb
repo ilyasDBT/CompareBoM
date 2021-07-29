@@ -88,7 +88,16 @@ Sub CompareBom(fullFileName As String)
         changed.Value = "Changed"
     End If
     'qtyxparent
-        Dim qtyxparent As Range
+    
+    Dim QtyXParentDest As Range
+    Set QtyxParentDest = wsDest.UsedRange.Find("QTYxParent", , xlValues, xlWhole)
+    If QtyxParentDest Is Nothing Then
+        MsgBox "QTYxParent column Not found in New BOM", vbCritical, "CompareBOM"
+        wbSource.Close
+        Exit Sub
+    End If
+    
+    Dim qtyxparent As Range
     Set qtyxparent = wsSource.UsedRange.Find("QTYxParent", , xlValues, xlWhole)
     If qtyxparent Is Nothing Then
         MsgBox "QTYxParent column Not found in Old BOM", vbCritical, "CompareBOM"
@@ -108,7 +117,7 @@ Sub CompareBom(fullFileName As String)
         newitem = True
         For i = oldItemNo.Row + 1 To wsSource.UsedRange.Rows.Count
             If wsDest.Cells(j, itemno.Column) = wsSource.Cells(i, oldItemNo.Column) Then
-                If CStr(wsDest.Cells(j, drawingRev.Column)) <> CStr(wsSource.Cells(i, oldDrawingRev.Column)) Then
+                If wsDest.Cells(j, drawingRev.Column).Value <> wsSource.Cells(i, oldDrawingRev.Column).Value Or wsDest.Cells(j, QtyXParentDest.Column).Value <> wsSource.Cells(i, qtyxparent.Column).Value Then
                     wsDest.Cells(j, changed.Column).Value = ChrW(&H2713)
                     newitem = False
                     If wsDest.Cells(j, itemCategoryDest.Column).Value <> "R" And wsSource.Cells(i, itemCategorySource.Column).Value <> "R" Then
