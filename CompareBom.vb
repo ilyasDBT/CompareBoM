@@ -196,7 +196,12 @@ Sub CompareBom(fullFileName As String)
                 wsDest.Cells(parentBomPath.Row + 1, 1).EntireRow.Font.Strikethrough = True 'mark as strikethrough to indicate a removed record
             End If
         Next j
-        
+                             
+        For i = itemNoDest.Row + 1 To wsDest.UsedRange.Rows.Count
+            'remove BomPath value and set as something else
+            If InStr(CStr(wsDest.Cells(i, bomPathSource.Column).Value),"path") Then wsDest.Cells(i, bomPathSource.Column).Value = "cancel drawing"
+        Next i
+
         wsDest.UsedRange.Find("BOM Path", , xlValues, xlWhole).EntireColumn.Delete 'delete BOM path column
         wbSource.Close SaveChanges:=False 'close source excel file without saving
         Application.ScreenUpdating = True
