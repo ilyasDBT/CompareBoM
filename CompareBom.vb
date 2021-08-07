@@ -199,7 +199,10 @@ Sub CompareBom(fullFileName As String)
                              
         For i = itemNoDest.Row + 1 To wsDest.UsedRange.Rows.Count
             'remove BomPath value and set as something else
-            If InStr(CStr(wsDest.Cells(i, bomPathSource.Column).Value),"path") Then wsDest.Cells(i, bomPathSource.Column).Value = "cancel drawing"
+            If InStr(CStr(wsDest.Cells(i, bomPathSource.Column).Value),"path") Then 
+                wsDest.Cells(i, bomPathSource.Column).Value = "cancel drawing"
+                wsDest.Cells(i, previousValue.Column).Value = 0
+            End If
         Next i
 
         wsDest.UsedRange.Find("BOM Path", , xlValues, xlWhole).EntireColumn.Delete 'delete BOM path column
