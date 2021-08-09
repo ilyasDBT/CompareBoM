@@ -79,14 +79,8 @@ Sub CompareBom(fullFileName As String)
             Exit Sub
         End If
     
-        'define output columns, changed and previous value, create if doesn't exist
-        Dim changed As Range
-        Set changed = wsDest.UsedRange.Find("Changed", , xlValues, xlWhole)
-        If changed Is Nothing Then
-            Set changed = wsDest.Cells(itemNoDest.Row, wsDest.UsedRange.Columns.Count + 1)
-            changed.Value = "Changed"
-        End If
-    
+        'define output columns, previous value, create if doesn't exist
+        
         Dim previousValue As Range
         Set previousValue = wsDest.UsedRange.Find("Previous Value", , xlValues, xlWhole)
         If previousValue Is Nothing Then
@@ -156,10 +150,7 @@ Sub CompareBom(fullFileName As String)
                     Next k
                                     
                     If previousValueString <> "" Then 'if there were any differences, the previous value string will not be empty
-                        wsDest.Cells(i, changed.Column).Value = ChrW(&H2713) 'add a tick mark to indicate changed
                         previousValueString = Left(previousValueString, Len(previousValueString) - 2) 'remove final comma and space
-                    Else
-                        wsDest.Cells(i, changed.Column).Value = ""
                     End If
                     wsDest.Cells(i, previousValue.Column).Value = previousValueString
                     
@@ -170,7 +161,6 @@ Sub CompareBom(fullFileName As String)
             
             'if item does not exist, it must be a new item, mark as changed and set previousValue as new
             If Not itemExist Then
-                wsDest.Cells(i, changed.Column).Value = ChrW(&H2713)
                 wsDest.Cells(i, previousValue.Column).Value = "New"
             End If
 20
