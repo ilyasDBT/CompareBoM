@@ -142,6 +142,7 @@ Sub CompareBom(fullFileName As String)
         Dim itemExist As Boolean
         itemExist = False 'to check if item is new
         For j = itemNoSource.Row + 1 To wsSource.UsedRange.Rows.Count
+            If wsSource.Cells(j, 1).Font.Strikethrough Then GoTo 30 'skip if the row in source is a removed item from previous comparisons
             If wsSource.Cells(j, itemCategorySource.Column).Value = "R" Then GoTo 30 'skip this row if category is R
             'Start compare item number and machine index
             If wsDest.Cells(i, itemNoDest.Column) = wsSource.Cells(j, itemNoSource.Column) And wsDest.Cells(i, MIndexDest.Column) = wsSource.Cells(j, MIndexSource.Column) Then
