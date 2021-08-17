@@ -208,7 +208,7 @@ Sub CompareBom(fullFileName As String)
             parentBomPath = parentLevel(wsSource.Cells(j, bomPathSource.Column).Value)
             'find the item's parent based on its BOM path
             For k = itemNoDest.Row + 1 To wsDest.UsedRange.Rows.Count
-                If wsDest.cell(k,bomPathDest.Column).value = parentBomPath Then
+                If wsDest.Cells(k,bomPathDest.Column).value = parentBomPath Or wsDest.Cells(k,bomPathSource.Column).value = parentBomPath Then
                     wsDest.Cells(k + 1, 1).Insert 'paste in Destination worksheet under the parent
                     wsDest.Cells(k + 1, 1).EntireRow.Font.Strikethrough = True 'mark as strikethrough to indicate a removed record
                     Exit For
