@@ -1,21 +1,20 @@
 Sub CompareBom(fullFileName As String)
-    'this program matches the item number and compares the revision
-    'if the revision has changed, this program inserts a check mark in the changed column
+    'this program matches the item number and compares the records values for the defined columns for comparison
+    'if the revision has changed, this program writes into the changed column and previous value column
     'source: old bom file
     'destination: new bom file
-    'to add: conditional statement for sheet metal
-    Application.ScreenUpdating = False
-    Dim fileName As String
-    fileName = Right(fullFileName, Len(fullFileName) - InStrRev(fullFileName, "\"))
-    
+
     'set the source and destination workbooks and sheet
     Dim wsDest As Worksheet
     Set wsDest = Application.ActiveSheet
 
+    Application.ScreenUpdating = False 'stop excel screen updating to prevent flashing of screen while code is running
+    Dim fileName As String
+    fileName = Right(fullFileName, Len(fullFileName) - InStrRev(fullFileName, "\")) 'get filename from filepath
     Dim wbSource As Workbook
     Dim wsSource As Worksheet
     Dim check As Boolean
-    check = IsWorkbookOpen(fileName)
+    check = IsWorkbookOpen(fileName) 'check if workbook is open, function located in another module
     If check = False Then
         On Error GoTo 10
         Set wbSource = Workbooks.Open(fullFileName)
@@ -24,46 +23,47 @@ Sub CompareBom(fullFileName As String)
         Set wbSource = Workbooks(fileName)
     End If
     Set wsSource = wbSource.Worksheets(1)
-    
-    'find the property columns
-    
-    'item number in both old and new BOM
-    Dim oldItemNo As Range
-    Set oldItemNo = wsSource.UsedRange.Find("Item Number", , xlValues, xlWhole)
-    If oldItemNo Is Nothing Then
+
+    'error handling for opening workbook
+    GoTo 11
+10      
+    MsgBox "File does not exist. Please browse to an existing file.", , "CompareBom"
+    End
+11
+
+    'define primary column names, item number and category, exit if doesn't exist
+    Dim itemNoSource As Range
+    Set itemNoSource = wsSource.UsedRange.Find("Item Number", , xlValues, xlWhole)
+    If itemNoSource Is Nothing Then
         MsgBox "Item Number column Not found in Old BOM", vbCritical, "CompareBOM"
         wbSource.Close
         Exit Sub
     End If
     
-    
-    Dim itemno As Range
-    Set itemno = wsDest.UsedRange.Find("Item Number", , xlValues, xlWhole)
-    If itemno Is Nothing Then
+    Dim itemNoDest As Range
+    Set itemNoDest = wsDest.UsedRange.Find("Item Number", , xlValues, xlWhole)
+    If itemNoDest Is Nothing Then
         MsgBox "Item Number column Not found in New BOM", vbCritical, "CompareBOM"
         wbSource.Close
         Exit Sub
     End If
-        
-    'Drawing Rev in both old and new BOM
-    Dim oldDrawingRev As Range
-    Set oldDrawingRev = wsSource.UsedRange.Find("Drawing Rev", , xlValues, xlWhole)
-    If oldDrawingRev Is Nothing Then
-        MsgBox "Drawing Rev column Not found in Old BOM", vbCritical, "CompareBOM"
+    'Add Machine Index to match
+    Dim MIndexSource As Range
+    Set MIndexSource = wsSource.UsedRange.Find("Machine Index", , xlValues, xlWhole)
+    If MIndexSource Is Nothing Then
+        MsgBox "Machine Index column Not found in Old BOM", vbCritical, "CompareBOM"
         wbSource.Close
         Exit Sub
     End If
     
-    
-    Dim drawingRev As Range
-    Set drawingRev = wsDest.UsedRange.Find("Drawing Rev", , xlValues, xlWhole)
-    If drawingRev Is Nothing Then
-        MsgBox "Drawing Rev column Not found in New BOM", vbCritical, "CompareBOM"
+    Dim MIndexDest As Range
+    Set MIndexDest = wsDest.UsedRange.Find("Machine Index", , xlValues, xlWhole)
+    If MIndexDest Is Nothing Then
+        MsgBox "Machine Index column Not found in New BOM", vbCritical, "CompareBOM"
         wbSource.Close
         Exit Sub
     End If
-    
-    
+    'Add itemCategotry to match
     Dim itemCategorySource As Range
     Set itemCategorySource = wsSource.UsedRange.Find("Item Category", , xlValues, xlWhole)
     If itemCategorySource Is Nothing Then
@@ -79,92 +79,176 @@ Sub CompareBom(fullFileName As String)
         wbSource.Close
         Exit Sub
     End If
+
+    'define output columns, previous value, create if doesn't exist
     
-    'Changed column
-    Dim changed As Range
-    Set changed = wsDest.UsedRange.Find("Changed", , xlValues, xlWhole)
-    If changed Is Nothing Then
-        Set changed = wsDest.Cells(itemno.Row, wsDest.UsedRange.Columns.Count + 1)
-        changed.Value = "Changed"
+    Dim previousValue As Range
+    Set previousValue = wsDest.UsedRange.Find("Previous Value", , xlValues, xlWhole)
+    If previousValue Is Nothing Then
+        Set previousValue = wsDest.Cells(itemNoDest.Row, wsDest.UsedRange.Columns.Count + 1)
+        previousValue.Value = "Previous Value"
     End If
-    'qtyxparent
-        Dim qtyxparent As Range
-    Set qtyxparent = wsSource.UsedRange.Find("QTYxParent", , xlValues, xlWhole)
-    If qtyxparent Is Nothing Then
-        MsgBox "QTYxParent column Not found in Old BOM", vbCritical, "CompareBOM"
-        wbSource.Close
-        Exit Sub
+    'TEST
+    'define output columns, Drawing Status, create if doesn't exist
+    
+    Dim drawingStatus As Range
+    Set drawingStatus = wsDest.UsedRange.Find("Drawing Status", , xlValues, xlWhole)
+    If drawingStatus Is Nothing Then
+        Set drawingStatus = wsDest.Cells(itemNoDest.Row, wsDest.UsedRange.Columns.Count + 1)
+        drawingStatus.Value = "Drawing Status"
     End If
-    'Original Value Qty column
-    Dim OriginalValue As Range
-    Set OriginalValue = wsDest.UsedRange.Find("Original Value", , xlValues, xlWhole)
-    If OriginalValue Is Nothing Then
-        Set OriginalValue = wsDest.Cells(itemno.Row, wsDest.UsedRange.Columns.Count + 1)
-        OriginalValue.Value = "Original Value"
-    End If
-    'start compare and copy properties
-    Dim newitem As Boolean
-    For j = itemno.Row + 1 To wsDest.UsedRange.Rows.Count
-        newitem = True
-        For i = oldItemNo.Row + 1 To wsSource.UsedRange.Rows.Count
-            If wsDest.Cells(j, itemno.Column) = wsSource.Cells(i, oldItemNo.Column) Then
-                If CStr(wsDest.Cells(j, drawingRev.Column)) <> CStr(wsSource.Cells(i, oldDrawingRev.Column)) Then
-                    wsDest.Cells(j, changed.Column).Value = ChrW(&H2713)
-                    newitem = False
-                    If wsDest.Cells(j, itemCategoryDest.Column).Value <> "R" And wsSource.Cells(i, itemCategorySource.Column).Value <> "R" Then
-                        wsDest.Cells(j, OriginalValue.Column).Value = wsSource.Cells(i, qtyxparent.Column).Value
+
+    'define column names to compare. Please add this if required
+    Dim columnNames As ArrayList 'need to add reference to mscorlib.dll
+    Set columnNames = New ArrayList 'columnNames used to store the column header strings
+    columnNames.Add ("Drawing Rev")
+    columnNames.Add ("QTYxParent")
+    columnNames.Add ("Rating")
+    columnNames.Add ("Model")
+    columnNames.Add ("Brand")
+    
+    'copy the previous line and tweak the string to add more column headers
+
+    Dim columnNumbersSource As ArrayList 'to store the column numbers for source worksheet
+    Set columnNumbersSource = New ArrayList
+    Dim columnNumbersDest As ArrayList 'to store the column numbers for destination worksheet
+    Set columnNumbersDest = New ArrayList
+    
+    'loop through all column names to get the corresponding column numbers
+    For Each ColumnName In columnNames
+        Dim columnHeaderSource As Range
+        Set columnHeaderSource = wsSource.UsedRange.Find(ColumnName, , xlValues, xlWhole)
+        If columnHeaderSource Is Nothing Then
+            MsgBox ColumnName & " column Not found in Source BoM", vbCritical, "CompareBOM"
+            wbSource.Close
+            Exit Sub
+        End If
+        columnNumbersSource.Add (columnHeaderSource.Column)
+        
+        Dim columnHeaderDest As Range
+        Set columnHeaderDest = wsDest.UsedRange.Find(ColumnName, , xlValues, xlWhole)
+        If columnHeaderSource Is Nothing Then
+            MsgBox ColumnName & " column Not found in Destination BoM", vbCritical, "CompareBOM"
+            wbSource.Close
+            Exit Sub
+        End If
+        columnNumbersDest.Add (columnHeaderDest.Column)
+    Next
+
+    'Compare Dest againt Source to find new and/or changed records
+    For i = itemNoDest.Row + 1 To wsDest.UsedRange.Rows.Count
+        If wsDest.Cells(i, itemCategoryDest.Column).Value = "R" Then GoTo 20 'skip this row if category is R
+        If wsDest.Cells(i, itemNoDest.Column).Value = "" Then  'skip this row if no item number
+            wsDest.Rows(i).Delete
+            i=i-1
+            GoTo 20 
+        End If
+           
+        Dim itemExist As Boolean
+        itemExist = False 'to check if item is new
+        For j = itemNoSource.Row + 1 To wsSource.UsedRange.Rows.Count
+            If wsSource.Cells(j, 1).Font.Strikethrough Then GoTo 30 'skip if the row in source is a removed item from previous comparisons
+            If wsSource.Cells(j, itemCategorySource.Column).Value = "R" Then GoTo 30 'skip this row if category is R
+            'Start compare item number and machine index
+            If wsDest.Cells(i, itemNoDest.Column) = wsSource.Cells(j, itemNoSource.Column) And wsDest.Cells(i, MIndexDest.Column) = wsSource.Cells(j, MIndexSource.Column) Then
+                itemExist = True
+
+                Dim previousValueString As String
+                previousValueString = ""
+                wsDest.Rows(i).Insert
+                wsDest.Rows(i).Font.Strikethrough=False
+                wsDest.Rows(i).Interior.Color=xlNone
+                
+                For k = 0 To columnNames.Count - 1
+                    If wsDest.Cells(i+1, columnNumbersDest(k)).Value <> wsSource.Cells(j, columnNumbersSource(k)).Value Then
+                        wsDest.Cells(i+1, columnNumbersDest(k)).Interior.Color = vbYellow 'highlight changed values
+                        wsDest.Cells(i, columnNumbersDest(k)).Value = wsSource.Cells(j, columnNumbersSource(k)).Value
+                        wsDest.Cells(i, columnNumbersDest(k)).Interior.Color = vbYellow
+                        wsDest.Cells(i, columnNumbersDest(k)).Font.Strikethrough=True
+                        'store the values of the column to the previous value string
+                        previousValueString = previousValueString + columnNames(k) + ":" + CStr(wsSource.Cells(j, columnNumbersSource(k)).Value) + ", "
+                    Else
+                        wsDest.Cells(i+1, columnNumbersDest(k)).Interior.Color = xlNone 'unhighlight cell
                     End If
+                Next k
+                                
+                If previousValueString <> "" Then 'if there were any differences, the previous value string will not be empty
+                    previousValueString = Left(previousValueString, Len(previousValueString) - 2) 'remove final comma and space
+                    i = i + 1
                 Else
-                    wsDest.Cells(j, changed.Column).Value = ""
-                    newitem = False
-                    If wsDest.Cells(j, itemCategoryDest.Column).Value <> "R" And wsSource.Cells(i, itemCategorySource.Column).Value <> "R" Then
-                        wsDest.Cells(j, OriginalValue.Column).Value = ""
-                    End If
+                    wsDest.Rows(i).Delete
                 End If
+                wsDest.Cells(i, previousValue.Column).Value = previousValueString
+                
+                Exit For 'Exit loop of Source if a match is already found and process. no need to loop through Source further.
+            End If
+30
+        Next j
+'try
+        'if item does not exist, it must be a new item, mark as changed and set Drawing Status as new
+        If Not itemExist Then
+            wsDest.Cells(i, drawingStatus.Column).Value = "New Drawing"
+        End If
+20
+    Next i
+
+    'Compare Source against Dest to find removed records
+    Call CreateBomPath(wsDest) 'create BOM Path Column. function located in another module
+    Call CreateBomPath(wsSource)
+    Dim bomPathSource As Range
+    Set bomPathSource = wsSource.UsedRange.Find("BOM Path", , xlValues, xlWhole)
+    Dim bomPathDest As Range
+    Set bomPathDest = wsDest.UsedRange.Find("BOM Path", , xlValues, xlWhole)
+    For j = itemNoSource.Row + 1 To wsSource.UsedRange.Rows.Count 'loop through source rows
+        If wsSource.Cells(j, 1).Font.Strikethrough Then GoTo 40 'skip if the row in source is a removed item from previous comparisons
+
+        Dim oldItemExist as Boolean
+        oldItemExist = False 'to check if old item is removed
+        For i = itemNoDest.Row + 1 To wsDest.UsedRange.Rows.Count
+            If wsSource.Cells(j, bomPathSource.Column).Value= wsDest.Cells(i, bomPathDest.Column).Value Then
+                oldItemExist = True
+                Exit For
             End If
         Next i
-        If newitem Then
-            wsDest.Cells(j, changed.Column).Value = ChrW(&H2713)
-            If wsDest.Cells(j, itemCategoryDest.Column).Value <> "R" And wsSource.Cells(i, itemCategorySource.Column).Value <> "R" Then
-                wsDest.Cells(j, OriginalValue.Column).Value = 0
-            End If
-        End If
-    Next j
 
-    Call CreateBomPath(wsDest)
-    Call CreateBomPath(wsSource)
-    Dim bompathheader As Range
-    Set bompathheader = wsSource.UsedRange.Find("BOM Path", , xlValues, xlWhole)
-    Dim parentbompath As Range
-    Dim bompath As String
-    For i = oldItemNo.Row + 1 To wsSource.UsedRange.Rows.Count
-        bompath = wsSource.Cells(i, bompathheader.Column).Value
-        If wsDest.UsedRange.Find(bompath, , xlValues, xlWhole) Is Nothing Then
-            wsSource.Cells(i, 1).EntireRow.Copy
-            Set parentbompath = wsDest.UsedRange.Find(parentlevel(bompath), , xlValues, xlWhole)
-            wsDest.Cells(parentbompath.Row + 1, 1).Insert
-            wsDest.Cells(parentbompath.Row + 1, 1).EntireRow.Font.Strikethrough = True
+        'look for the BOM Path in Destination worksheet BOM Path column
+        If Not oldItemExist Then
+            wsSource.Cells(j, 1).EntireRow.Copy 'copy the whole row
+
+            Dim parentBomPath As String
+            parentBomPath = parentLevel(wsSource.Cells(j, bomPathSource.Column).Value)
+            'find the item's parent based on its BOM path
+            For k = itemNoDest.Row + 1 To wsDest.UsedRange.Rows.Count
+                If wsDest.Cells(k,bomPathDest.Column).value = parentBomPath Or wsDest.Cells(k,bomPathSource.Column).value = parentBomPath Then
+                    wsDest.Cells(k + 1, 1).Insert 'paste in Destination worksheet under the parent
+                    wsDest.Cells(k + 1, 1).EntireRow.Font.Strikethrough = True 'mark as strikethrough to indicate a removed record
+                    Exit For
+                End If
+            Next k
+        End If
+40
+    Next j
+                            
+    For i = itemNoDest.Row + 1 To wsDest.UsedRange.Rows.Count
+        'remove BomPath value and set as something else
+        If wsDest.Cells(i, 1).Font.Strikethrough Then
+            wsDest.Cells(i, drawingStatus.Column).Value = "Cancel drawing"
+            wsDest.Cells(i, drawingStatus.Column).Font.Strikethrough = False            
         End If
     Next i
-    wsDest.UsedRange.Find("BOM Path", , xlValues, xlWhole).EntireColumn.Delete
-    wbSource.Close SaveChanges:=False
+
+    wsDest.UsedRange.Find("BOM Path", , xlValues, xlWhole).EntireColumn.Delete 'delete BOM path column
+    wbSource.Close SaveChanges:=False 'close source excel file without saving
     Application.ScreenUpdating = True
     MsgBox "Done", , "Compare BOM"
-    
-    GoTo 11
-    
-10  MsgBox "File does not exist. Please browse to an existing file.", , "CompareBom"
-    End
-    
-11
 End Sub
 
-Function parentlevel(bompath As String)
-
-    If InStr(bompath, ".") > 0 Then
-        parentlevel = Left(bompath, InStrRev(bompath, ".") - 1)
+Function parentLevel(bomPath As String)
+    If InStr(bomPath, ".") > 0 Then
+        parentLevel = Left(bomPath, InStrRev(bomPath, ".") - 1)
     Else
-        parentlevel = ""
+        parentLevel = ""
     End If
-    
 End Function
+
+
