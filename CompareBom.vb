@@ -135,14 +135,20 @@ Sub CompareBom(fullFileName As String)
         columnNumbersDest.Add (columnHeaderDest.Column)
     Next
 
+    'clean up previous comparisons
+    For i = itemNoDest.Row + 1 To wsDest.UsedRange.Rows.Count
+        If wsDest.Cells(i, itemNoDest.Column).Value = "" And wsDest.Cells(i+1, itemNoDest.Column).Value <> "" Then  'delete this row if no item number
+            wsDest.Rows(i).Delete
+            i=i-1
+        ElseIf wsDest.Cells(i,1).Font.Strikethrough Then  'delete this row if is removed item from previous compare
+            wsDest.Rows(i).Delete
+            i=i-1
+        End If
+    Next i
+
     'Compare Dest againt Source to find new and/or changed records
     For i = itemNoDest.Row + 1 To wsDest.UsedRange.Rows.Count
         If wsDest.Cells(i, itemCategoryDest.Column).Value = "R" Then GoTo 20 'skip this row if category is R
-        If wsDest.Cells(i, itemNoDest.Column).Value = "" Then  'skip this row if no item number
-            wsDest.Rows(i).Delete
-            i=i-1
-            GoTo 20 
-        End If
            
         Dim itemExist As Boolean
         itemExist = False 'to check if item is new
@@ -150,7 +156,7 @@ Sub CompareBom(fullFileName As String)
             If wsSource.Cells(j, 1).Font.Strikethrough Then GoTo 30 'skip if the row in source is a removed item from previous comparisons
             If wsSource.Cells(j, itemCategorySource.Column).Value = "R" Then GoTo 30 'skip this row if category is R
             'Start compare item number and machine index
-            If wsDest.Cells(i, itemNoDest.Column) = wsSource.Cells(j, itemNoSource.Column) And wsDest.Cells(i, MIndexDest.Column) = wsSource.Cells(j, MIndexSource.Column) Then
+            If wsDest.Cells(i, itemNoDest.Column).Value = wsSource.Cells(j, itemNoSource.Column).Value And wsDest.Cells(i, MIndexDest.Column).Value = wsSource.Cells(j, MIndexSource.Column).Value Then
                 itemExist = True
 
                 Dim previousValueString As String
@@ -220,8 +226,13 @@ Sub CompareBom(fullFileName As String)
             'find the item's parent based on its BOM path
             For k = itemNoDest.Row + 1 To wsDest.UsedRange.Rows.Count
                 If wsDest.Cells(k,bomPathDest.Column).value = parentBomPath Or wsDest.Cells(k,bomPathSource.Column).value = parentBomPath Then
-                    wsDest.Cells(k + 1, 1).Insert 'paste in Destination worksheet under the parent
-                    wsDest.Cells(k + 1, 1).EntireRow.Font.Strikethrough = True 'mark as strikethrough to indicate a removed record
+                    k=k+1
+                    While wsDest.Cells(k,1).Font.Strikethrough
+                        k=k+1
+                    Wend
+                    
+                    wsDest.Cells(k, 1).Insert 'paste in Destination worksheet under the parent
+                    wsDest.Cells(k, 1).EntireRow.Font.Strikethrough = True 'mark as strikethrough to indicate a removed record
                     Exit For
                 End If
             Next k
