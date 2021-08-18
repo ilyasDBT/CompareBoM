@@ -138,7 +138,12 @@ Sub CompareBom(fullFileName As String)
     'Compare Dest againt Source to find new and/or changed records
     For i = itemNoDest.Row + 1 To wsDest.UsedRange.Rows.Count
         If wsDest.Cells(i, itemCategoryDest.Column).Value = "R" Then GoTo 20 'skip this row if category is R
-            
+        If wsDest.Cells(i, itemNoDest.Column).Value = "" Then  'skip this row if no item number
+            wsDest.Rows(i).Delete
+            i=i-1
+            GoTo 20 
+        End If
+           
         Dim itemExist As Boolean
         itemExist = False 'to check if item is new
         For j = itemNoSource.Row + 1 To wsSource.UsedRange.Rows.Count
@@ -150,23 +155,28 @@ Sub CompareBom(fullFileName As String)
 
                 Dim previousValueString As String
                 previousValueString = ""
+                wsDest.Rows(i).Insert
+                wsDest.Rows(i).Font.Strikethrough=False
+                wsDest.Rows(i).Interior.Color=xlNone
+                
                 For k = 0 To columnNames.Count - 1
-                    If wsDest.Cells(i, columnNumbersDest(k)).Value <> wsSource.Cells(j, columnNumbersSource(k)).Value Then
-                        wsDest.Cells(i, columnNumbersDest(k)).Interior.Color = vbYellow 'highlight changed values
-                        'wsDest.Cells(i, columnNumbersDest(k)).Font.Strikethrough = True ' indicate changes
-
-
-
+                    If wsDest.Cells(i+1, columnNumbersDest(k)).Value <> wsSource.Cells(j, columnNumbersSource(k)).Value Then
+                        wsDest.Cells(i+1, columnNumbersDest(k)).Interior.Color = vbYellow 'highlight changed values
+                        wsDest.Cells(i, columnNumbersDest(k)).Value = wsSource.Cells(j, columnNumbersSource(k)).Value
+                        wsDest.Cells(i, columnNumbersDest(k)).Interior.Color = vbYellow
+                        wsDest.Cells(i, columnNumbersDest(k)).Font.Strikethrough=True
                         'store the values of the column to the previous value string
                         previousValueString = previousValueString + columnNames(k) + ":" + CStr(wsSource.Cells(j, columnNumbersSource(k)).Value) + ", "
                     Else
-                        wsDest.Cells(i, columnNumbersDest(k)).Interior.Color = xlNone 'unhighlight cell
-                        'wsDest.Cells(i, columnNumbersDest(k)).Font.Strikethrough = False ' indicate changes
+                        wsDest.Cells(i+1, columnNumbersDest(k)).Interior.Color = xlNone 'unhighlight cell
                     End If
                 Next k
                                 
                 If previousValueString <> "" Then 'if there were any differences, the previous value string will not be empty
                     previousValueString = Left(previousValueString, Len(previousValueString) - 2) 'remove final comma and space
+                    i = i + 1
+                Else
+                    wsDest.Rows(i).Delete
                 End If
                 wsDest.Cells(i, previousValue.Column).Value = previousValueString
                 
